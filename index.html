@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><style>html{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script></head><body>
 <title>NBAtypical</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -488,6 +488,8 @@ body.shake .wrap{animation:shakeb .5s}
 .acbtns{display:flex;gap:8px;flex-wrap:wrap}#acBox{grid-column:1/-1;display:grid;gap:8px}.acctin .hint{grid-column:1/-1;margin:0}
 @media(max-width:700px){.acctin,.acct:not(.promo) .acctin{grid-template-columns:1fr}}
 .vsinfo .tt[class*=" s-"] .ttx{filter:brightness(1.9) saturate(1.1)!important}.vsinfo .tt[class*=" s-"]{background:rgba(255,255,255,.1)!important;background-color:rgba(10,8,24,.92)!important}
+.atabs{display:flex;gap:6px;margin-top:6px}.atabs button{font:700 12px var(--display);letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}.atabs button.on{background:var(--ink);color:var(--bg)}
+.lnk{background:none;border:0;color:var(--c1);text-decoration:underline;font:600 13px inherit;cursor:pointer;padding:2px;justify-self:start}
 </style>
 
 <div class="wrap">
@@ -2502,7 +2504,10 @@ const REDUCE=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').m
 const KEY='nbatypical:v3';
 let store={best:0,streak:0,last:'',days:{},endBest:0,rounds:0,pro:false,binder:{}};
 try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)store=Object.assign(store,s)}catch(e){}
-const save=()=>{store.bestStreak=Math.max(store.bestStreak||0,store.streak||0);try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}};
+const SB_URL='https://gslzwtestyyybsnhozfe.supabase.co',SB_KEY='sb_publishable_WMjh9grWPkWXlMpH_9A9Ag_zmvKkQt5';
+let sb=null;try{if(window.supabase&&window.supabase.createClient)sb=window.supabase.createClient(SB_URL,SB_KEY)}catch(e){}
+let onSaved=null;
+const save=()=>{store.bestStreak=Math.max(store.bestStreak||0,store.streak||0);try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}if(onSaved)onSaved()};
 const etParts=d=>{const o={};new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(d||new Date()).forEach(p=>o[p.type]=p.value);return o};
 const etDay=()=>{const o=etParts();return o.year+'-'+o.month+'-'+o.day};
 const secsToReset=()=>{const o=etParts();return 86400-(+o.hour*3600+ +o.minute*60+ +o.second)};
@@ -3007,23 +3012,89 @@ function renderStatPanels(){
 function refreshStats(){if(!$('profile').hidden)renderProfile();if(!$('shop').hidden)renderShop();if(!$('friends').hidden)renderFriends()}
 /* PROFILE */
 let pTab='banner',pFilter=0;
-function renderAcct(){
-  const a=store.acct,el=$('acctcard');if(!el)return;
-  if(!a){el.className='card acct promo';
-    el.innerHTML=`<div class="acctin"><div class="acctt"><h3>Create your account</h3><p>Claim your username now. Accounts are what let your Binder, Dimes, items, rank and friends follow you to any device, and they open the door to live leaderboards and trading. Full cloud accounts open with the public launch. Until then your progress lives on this device, and your username and a restore code carry over.</p><ul class="ben"><li>Cloud save on every device</li><li>Real leaderboards and ranked seasons</li><li>Friends, trading and more</li></ul></div><form id="acctf" autocomplete="off"><label for="acctn">Username</label><input id="acctn" maxlength="16" placeholder="3 to 16 letters, numbers or _"><button class="btn" type="submit">Create account</button><div class="hint" id="acctm"></div></form></div>`;
-    $('acctf').onsubmit=e=>{e.preventDefault();const v=$('acctn').value.trim();if(!/^[A-Za-z0-9_]{3,16}$/.test(v)){$('acctm').textContent='Use 3 to 16 letters, numbers or underscores.';return}
-      store.acct={u:v,t:Date.now()};store.name=v;save();chips();renderProfile();toast(`<b>Account created</b><span>Welcome, ${esc(v)}. Cloud sync arrives with the public launch.</span>`)}}
-  else{el.className='card acct';
-    el.innerHTML=`<div class="acctin"><div class="acctt"><h3>@${esc(a.u)}</h3><p class="hint" style="margin:0">Your account is saved on this device. Cloud sync arrives with the public launch: copy a restore code to move your progress.</p></div><div class="acbtns"><button class="btn sm" id="acBk">Copy restore code</button><button class="btn sm ghost" id="acRs">Restore from code</button></div><div id="acBox" hidden><textarea id="acTa" rows="3" placeholder="Paste a restore code here"></textarea><button class="btn sm" id="acGo">Restore</button></div><div class="hint" id="acMsg"></div></div>`;
-    $('acBk').onclick=()=>{let code='';try{code='NBAT1.'+btoa(unescape(encodeURIComponent(JSON.stringify(store))))}catch(e){}
-      const ok=()=>{$('acMsg').textContent='Restore code copied. Keep it somewhere safe.'};
-      const fb=()=>{$('acBox').hidden=false;$('acTa').value=code;$('acTa').select();$('acMsg').textContent='Copy the code from the box.'};
-      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(code).then(ok,fb);else fb()};
-    $('acRs').onclick=()=>{$('acBox').hidden=!$('acBox').hidden};
-    $('acGo').onclick=()=>{try{const t=$('acTa').value.trim();if(!t.startsWith('NBAT1.'))throw 0;const o=JSON.parse(decodeURIComponent(escape(atob(t.slice(6)))));if(!o||typeof o!=='object'||!Array.isArray(o.inv))throw 0;
-      if($('acGo').dataset.arm!=='1'){$('acGo').dataset.arm='1';$('acGo').textContent='Tap again to overwrite this device';return}
-      localStorage.setItem(KEY,JSON.stringify(o));location.reload()}catch(e){$('acMsg').textContent='That code is not valid.'}}}
+/* ===== accounts + cloud save (Supabase) ===== */
+const cloud={user:null,prof:null,mode:'up',msg:'',busy:false,pend:null,recovery:false,status:''};
+function cloudLoadRemote(s,uid){const d=Object.assign({},s.data,{cloudUid:uid,cloudAt:s.updated_at});try{localStorage.setItem(KEY,JSON.stringify(d))}catch(e){}location.reload()}
+async function cloudPush(){
+  if(!sb||!cloud.user||cloud.pend)return;
+  const iso=new Date().toISOString();store.cloudUid=cloud.user.id;store.cloudAt=iso;
+  try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}
+  try{
+    const r=await sb.from('saves').upsert({user_id:cloud.user.id,data:store,updated_at:iso});if(r.error)throw r.error;
+    if(cloud.prof)await sb.from('profiles').update({rp:store.rp|0,wins:(store.duel&&store.duel.w)|0,updated_at:iso}).eq('user_id',cloud.user.id);
+    cloud.status='Saved to the cloud '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  }catch(e){cloud.status='Cloud save failed. Will retry on your next action.'}
+  renderAcct();
 }
+async function cloudAdopt(session){
+  if(!session){cloud.user=null;cloud.prof=null;renderAcct();return}
+  const uid=session.user.id;cloud.user=session.user;
+  const pr=await sb.from('profiles').select('username').eq('user_id',uid).maybeSingle();cloud.prof=pr.data||null;
+  if(cloud.prof&&store.name!==cloud.prof.username){store.name=cloud.prof.username}
+  const sv=await sb.from('saves').select('data,updated_at').eq('user_id',uid).maybeSingle();
+  if(sv.error){cloud.status='Could not reach cloud save.';renderAcct();return}
+  const s=sv.data;
+  if(!s){await cloudPush();return}
+  if(store.cloudUid===uid){
+    if(Date.parse(s.updated_at)>Date.parse(store.cloudAt||0)+1500){cloudLoadRemote(s,uid);return}
+    await cloudPush();return}
+  const localHas=(store.rounds|0)>0||Object.keys(store.binder||{}).length>0;
+  if(!localHas){cloudLoadRemote(s,uid);return}
+  cloud.pend=s;renderAcct();
+}
+async function cloudInit(){
+  if(!sb)return;
+  try{sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'){cloud.user=null;cloud.prof=null;cloud.status='';setTimeout(renderAcct,0)}if(ev==='PASSWORD_RECOVERY'){cloud.recovery=true;setTimeout(renderAcct,0)}})}catch(e){}
+  try{const r=await sb.auth.getSession();await cloudAdopt(r.data&&r.data.session)}catch(e){renderAcct()}
+}
+const friendlyErr=e=>{const m=String(e&&e.message||e||'');if(/failed to fetch|network|load failed/i.test(m))return 'Could not reach the server. Check your connection.';if(/already registered|already been registered/i.test(m))return 'That email already has an account. Try logging in.';if(/invalid login/i.test(m))return 'Wrong email or password.';if(/database error|duplicate|unique/i.test(m))return 'That username is taken. Try another.';if(/password/i.test(m)&&/6|8|short|least/i.test(m))return 'Password must be at least 8 characters.';return m||'Something went wrong.'};
+function renderAcct(){
+  const el=$('acctcard');if(!el)return;
+  const note=cloud.msg?`<div class="hint" id="acMsg">${esc(cloud.msg)}</div>`:'<div class="hint" id="acMsg"></div>';
+  if(!sb){el.className='card acct';el.innerHTML='<div class="acctt"><h3>Accounts</h3><p class="hint" style="margin:0">Accounts and cloud save are available in the online version of the game.</p></div>';return}
+  if(cloud.recovery){el.className='card acct promo';
+    el.innerHTML=`<div class="acctin"><div class="acctt"><h3>Set a new password</h3><p>Choose a new password for your account.</p></div><form id="acNp" autocomplete="off"><label for="acP">New password</label><input id="acP" type="password" minlength="8" autocomplete="new-password"><button class="btn" type="submit">Save password</button>${note}</form></div>`;
+    $('acNp').onsubmit=async e=>{e.preventDefault();const p=$('acP').value;if(p.length<8){cloud.msg='Password must be at least 8 characters.';return renderAcct()}
+      const r=await sb.auth.updateUser({password:p});cloud.msg=r.error?friendlyErr(r.error):'';if(!r.error){cloud.recovery=false;cloud.status='Password updated.'}renderAcct()};return}
+  if(cloud.user&&cloud.pend){el.className='card acct promo';
+    el.innerHTML=`<div class="acctt"><h3>Which save do you want to keep?</h3><p>This account already has a cloud save, and this device has its own progress. Pick one. The other is replaced.</p></div><div class="acbtns"><button class="btn" id="acCl">Use my cloud save</button><button class="btn ghost" id="acLo">Use this device's progress</button></div>${note}`;
+    $('acCl').onclick=()=>{const s=cloud.pend;cloud.pend=null;cloudLoadRemote(s,cloud.user.id)};
+    $('acLo').onclick=()=>{cloud.pend=null;cloudPush()};return}
+  if(cloud.user){el.className='card acct';
+    const nm=cloud.prof?cloud.prof.username:(cloud.user.email||'');
+    el.innerHTML=`<div class="acctin"><div class="acctt"><h3>@${esc(nm)}</h3><p class="hint" style="margin:0">${esc(cloud.status||'Signed in. Your progress saves to the cloud automatically.')}</p></div><div class="acbtns"><button class="btn sm" id="acSync">Save now</button><button class="btn sm ghost" id="acOut">Sign out</button></div></div>${note}`;
+    $('acSync').onclick=()=>cloudPush();
+    $('acOut').onclick=async()=>{await sb.auth.signOut();cloud.user=null;cloud.prof=null;cloud.status='';cloud.msg='';renderAcct()};return}
+  el.className='card acct promo';
+  const up=cloud.mode==='up',pre=(store.acct&&store.acct.u)||'';
+  el.innerHTML=`<div class="acctin"><div class="acctt"><h3>${up?'Create your account':'Log in'}</h3><p>Your Binder, Dimes, items, rank and friends follow you to any device, and your rank counts on the real leaderboards.</p><div class="atabs"><button type="button" class="${up?'on':''}" id="acTu">Create account</button><button type="button" class="${up?'':'on'}" id="acTi">Log in</button></div></div>
+  <form id="acF" autocomplete="on">${up?`<label for="acU">Username</label><input id="acU" maxlength="16" value="${esc(pre)}" placeholder="3 to 16 letters, numbers or _" autocomplete="username">`:''}<label for="acE">Email</label><input id="acE" type="email" autocomplete="email" placeholder="you@example.com"><label for="acP">Password</label><input id="acP" type="password" minlength="8" autocomplete="${up?'new-password':'current-password'}" placeholder="At least 8 characters"><button class="btn" type="submit" ${cloud.busy?'disabled':''}>${up?'Create account':'Log in'}</button>${up?'':'<button type="button" class="lnk" id="acFg">Forgot password?</button>'}${note}</form></div>`;
+  $('acTu').onclick=()=>{cloud.mode='up';cloud.msg='';renderAcct()};$('acTi').onclick=()=>{cloud.mode='in';cloud.msg='';renderAcct()};
+  if($('acFg'))$('acFg').onclick=async()=>{const em=$('acE').value.trim();if(!em){cloud.msg='Type your email above first.';return renderAcct()}
+    const r=await sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});cloud.msg=r.error?friendlyErr(r.error):'Password reset email sent. Check your inbox.';renderAcct()};
+  $('acF').onsubmit=async e=>{e.preventDefault();if(cloud.busy)return;
+    const em=$('acE').value.trim(),pw=$('acP').value,un=up?$('acU').value.trim():'';
+    if(up&&!/^[A-Za-z0-9_]{3,16}$/.test(un)){cloud.msg='Username: 3 to 16 letters, numbers or underscores.';return renderAcct()}
+    if(!/^\S+@\S+\.\S+$/.test(em)){cloud.msg='Enter a valid email.';return renderAcct()}
+    if(pw.length<8){cloud.msg='Password must be at least 8 characters.';return renderAcct()}
+    cloud.busy=true;cloud.msg='Working...';renderAcct();
+    try{
+      if(up){
+        const ex=await sb.from('profiles').select('user_id').ilike('username',un.replace(/_/g,'\\_')).maybeSingle();
+        if(ex.data)throw new Error('That username is taken. Try another.');
+        const r=await sb.auth.signUp({email:em,password:pw,options:{data:{username:un},emailRedirectTo:location.origin+location.pathname}});if(r.error)throw r.error;
+        if(!r.data.session){cloud.msg='Almost done. Check your email and click the confirmation link, then log in here.';cloud.mode='in';cloud.busy=false;return renderAcct()}
+        cloud.msg='';cloud.busy=false;await cloudAdopt(r.data.session);toast(`<b>Account created</b><span>Welcome, ${esc(un)}. Your progress now saves to the cloud.</span>`);
+      }else{
+        const r=await sb.auth.signInWithPassword({email:em,password:pw});if(r.error)throw r.error;
+        cloud.msg='';cloud.busy=false;await cloudAdopt(r.data.session);
+      }
+    }catch(err){cloud.msg=friendlyErr(err);cloud.busy=false;renderAcct()}
+  };
+}
+let pushT=null;onSaved=()=>{if(!cloud.user||cloud.pend)return;clearTimeout(pushT);pushT=setTimeout(cloudPush,2500)};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&cloud.user&&!cloud.pend){clearTimeout(pushT);cloudPush()}});
+setTimeout(cloudInit,0);
 function renderProfile(){renderAcct();
   const st=profileStats(),owned=uniq();
   $('pprev').innerHTML=profileHTML(store.eq,store.name);
@@ -3607,5 +3678,4 @@ function init(){
 init();
 })();
 </script>
-
 </body></html>
