@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><style>html{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script><script defer src="https://cdn.vercel-insights.com/v1/script.js"></script></head><body>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><style>html{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script></head><body>
 <title>NBAtypical</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -490,6 +490,7 @@ body.shake .wrap{animation:shakeb .5s}
 .vsinfo .tt[class*=" s-"] .ttx{filter:brightness(1.9) saturate(1.1)!important}.vsinfo .tt[class*=" s-"]{background:rgba(255,255,255,.1)!important;background-color:rgba(10,8,24,.92)!important}
 .atabs{display:flex;gap:6px;margin-top:6px}.atabs button{font:700 12px var(--display);letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:2px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}.atabs button.on{background:var(--ink);color:var(--bg)}
 .lnk{background:none;border:0;color:var(--c1);text-decoration:underline;font:600 13px inherit;cursor:pointer;padding:2px;justify-self:start}
+.rq{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)}.oh{font:800 12px var(--display);letter-spacing:.12em;text-transform:uppercase;margin:14px 0 4px;color:var(--muted)}#ofr .cin{display:flex;gap:8px}#ofr .cin input{flex:1;min-width:0}
 </style>
 
 <div class="wrap">
@@ -604,6 +605,7 @@ body.shake .wrap{animation:shakeb .5s}
 <section id="friends" hidden>
   <div class="grid">
     <div class="col">
+      <div class="card" id="ofr" hidden></div>
       <div class="card"><h3>Your friend code <small>ID <span id="fid"></span></small></h3><div id="fme" style="margin-bottom:12px"></div><div class="codebox" id="fcode"></div><div class="acts" style="justify-content:flex-start"><button class="btn" id="fcopy">Copy my code</button></div><p class="hint" style="margin:10px 0 0">Your code carries your name, banner, ring, emblem, title and stats as of right now. Share it again after you change your gear.</p></div>
       <div class="card"><h3>Add a friend</h3><div class="cin"><input id="fadd" placeholder="Paste a friend code (NBAT-…)" autocomplete="off" aria-label="Friend code"><button class="btn" id="faddb">Add</button></div><div class="cmsg" id="fmsg"></div></div>
     </div>
@@ -3021,14 +3023,14 @@ async function cloudPush(){
   try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}
   try{
     const r=await sb.from('saves').upsert({user_id:cloud.user.id,data:store,updated_at:iso});if(r.error)throw r.error;
-    if(cloud.prof)await sb.from('profiles').update({rp:store.rp|0,wins:(store.duel&&store.duel.w)|0,updated_at:iso}).eq('user_id',cloud.user.id);
+    if(cloud.prof)await sb.from('profiles').update({rp:store.rp|0,wins:(store.duel&&store.duel.w)|0,snap:snapshot(),updated_at:iso}).eq('user_id',cloud.user.id);
     cloud.status='Saved to the cloud '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
   }catch(e){cloud.status='Cloud save failed. Will retry on your next action.'}
   renderAcct();
 }
 async function cloudAdopt(session){
   if(!session){cloud.user=null;cloud.prof=null;renderAcct();return}
-  const uid=session.user.id;cloud.user=session.user;
+  const uid=session.user.id;cloud.user=session.user;setTimeout(()=>{frFetch(true);lbFetch()},300);
   const pr=await sb.from('profiles').select('username').eq('user_id',uid).maybeSingle();cloud.prof=pr.data||null;
   if(cloud.prof&&store.name!==cloud.prof.username){store.name=cloud.prof.username}
   const sv=await sb.from('saves').select('data,updated_at').eq('user_id',uid).maybeSingle();
@@ -3044,7 +3046,7 @@ async function cloudAdopt(session){
 }
 async function cloudInit(){
   if(!sb)return;
-  try{sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'){cloud.user=null;cloud.prof=null;cloud.status='';setTimeout(renderAcct,0)}if(ev==='PASSWORD_RECOVERY'){cloud.recovery=true;setTimeout(renderAcct,0)}})}catch(e){}
+  try{sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'){cloud.user=null;cloud.prof=null;cloud.status='';fr.list=[];fr.inc=[];fr.out=[];fr.known=null;setBadge();setTimeout(renderAcct,0)}if(ev==='PASSWORD_RECOVERY'){cloud.recovery=true;setTimeout(renderAcct,0)}})}catch(e){}
   try{const r=await sb.auth.getSession();await cloudAdopt(r.data&&r.data.session)}catch(e){renderAcct()}
 }
 const friendlyErr=e=>{const m=String(e&&e.message||e||'');if(/failed to fetch|network|load failed/i.test(m))return 'Could not reach the server. Check your connection.';if(/already registered|already been registered/i.test(m))return 'That email already has an account. Try logging in.';if(/invalid login/i.test(m))return 'Wrong email or password.';if(/database error|duplicate|unique/i.test(m))return 'That username is taken. Try another.';if(/password/i.test(m)&&/6|8|short|least/i.test(m))return 'Password must be at least 8 characters.';return m||'Something went wrong.'};
@@ -3091,6 +3093,81 @@ function renderAcct(){
       }
     }catch(err){cloud.msg=friendlyErr(err);cloud.busy=false;renderAcct()}
   };
+}
+
+/* ===== online leaderboard + friends ===== */
+let lbAt=0;
+async function lbFetch(){
+  if(!sb)return false;
+  try{
+    const sel='user_id,username,rp,wins,snap';
+    const [a,b]=await Promise.all([sb.from('profiles').select(sel).order('rp',{ascending:false}).limit(60),sb.from('profiles').select(sel).order('wins',{ascending:false}).limit(60)]);
+    if(a.error||b.error)return false;
+    const seen={},rows=[];(a.data||[]).concat(b.data||[]).forEach(p=>{if(seen[p.user_id])return;seen[p.user_id]=1;rows.push(p)});
+    const d=snapshot().eq,ok=(id,f)=>ITEM[id]?id:f;
+    const next=rows.filter(p=>!(cloud.user&&p.user_id===cloud.user.id)).map(p=>{const e=(p.snap&&p.snap.eq)||{};return{n:p.username,rp:p.rp|0,w:p.wins|0,eq:{ring:ok(e.ring,d.ring),emblem:ok(e.emblem,d.emblem)}}});
+    const ch=JSON.stringify(next)!==JSON.stringify(realList);realList=next;return ch;
+  }catch(e){return false}
+}
+setInterval(()=>{if(sb&&!document.hidden)lbFetch()},60000);
+const fr={list:[],inc:[],out:[],at:0,msg:'',known:null};
+function setBadge(){const b=document.querySelector('[data-go="friends"]');if(b)b.textContent='Friends'+(fr.inc.length?' ('+fr.inc.length+')':'')}
+async function frFetch(force){
+  if(!sb||!cloud.user)return;if(!force&&Date.now()-fr.at<4000)return;fr.at=Date.now();
+  try{
+    const uid=cloud.user.id;
+    const r=await sb.from('friendships').select('id,requester,addressee,status').or('requester.eq.'+uid+',addressee.eq.'+uid);
+    if(r.error)return;
+    const rows=r.data||[],ids=[...new Set(rows.map(x=>x.requester===uid?x.addressee:x.requester))],profs={};
+    if(ids.length){const p=await sb.from('profiles').select('user_id,username,snap,rp').in('user_id',ids);(p.data||[]).forEach(x=>profs[x.user_id]=x)}
+    const mk=x=>{const o=x.requester===uid?x.addressee:x.requester,p=profs[o]||{};return{id:x.id,uid:o,n:p.username||'Player',snap:p.snap,rp:p.rp|0}};
+    fr.list=rows.filter(x=>x.status==='accepted').map(mk);
+    fr.inc=rows.filter(x=>x.status==='pending'&&x.addressee===uid).map(mk);
+    fr.out=rows.filter(x=>x.status==='pending'&&x.requester===uid).map(mk);
+    if(fr.known!==null&&fr.inc.length>fr.known)toast(`<b>Friend request</b><span>${esc(fr.inc[0].n)} wants to be your friend. Open Friends to accept.</span>`);
+    fr.known=fr.inc.length;setBadge();
+    if(!$('friends').hidden)renderOnline();
+  }catch(e){}
+}
+setInterval(()=>{if(cloud.user&&!document.hidden)frFetch(true)},20000);
+async function frSend(raw){
+  const name=String(raw||'').trim().replace(/^@/,'');
+  if(!/^[A-Za-z0-9_]{3,16}$/.test(name)){fr.msg='Enter a username (3 to 16 letters, numbers or _).';return renderOnline()}
+  const me=cloud.user.id;
+  const p=await sb.from('profiles').select('user_id,username').ilike('username',name.replace(/_/g,'\\_')).maybeSingle();
+  if(p.error){fr.msg=friendlyErr(p.error);return renderOnline()}
+  if(!p.data){fr.msg='No player found with that username.';return renderOnline()}
+  const t=p.data.user_id;
+  if(t===me){fr.msg='That is your own username.';return renderOnline()}
+  if(fr.list.some(x=>x.uid===t)){fr.msg='You are already friends.';return renderOnline()}
+  if(fr.out.some(x=>x.uid===t)){fr.msg='Request already sent. Waiting for them to accept.';return renderOnline()}
+  const inc=fr.inc.find(x=>x.uid===t);
+  if(inc){await sb.from('friendships').update({status:'accepted'}).eq('id',inc.id);fr.msg='You are now friends with '+p.data.username+'.';return frFetch(true)}
+  const r=await sb.from('friendships').insert({requester:me,addressee:t,status:'pending'});
+  fr.msg=r.error?(/duplicate|unique/i.test(r.error.message)?'A request already exists between you two.':friendlyErr(r.error)):'Request sent to '+p.data.username+'. They will see it next time they open Friends.';
+  frFetch(true);renderOnline();
+}
+function renderOnline(){
+  const el=$('ofr');if(!el)return;
+  if(!sb){el.hidden=true;return}el.hidden=false;
+  if(!cloud.user){el.innerHTML='<h3>Friends online</h3><p class="hint">Log in or create an account to add friends by username, send requests and challenge them.</p><button class="btn" id="ofGo">Go to account</button>';
+    $('ofGo').onclick=()=>{renderProfile();show('profile')};return}
+  const sn=f=>f.snap&&f.snap.eq&&ITEM[f.snap.eq.banner]&&ITEM[f.snap.eq.ring]?{n:f.n,eq:f.snap.eq,sv:f.snap.sv||[],tau:0.9}:null;
+  const reqRow=(f,btns)=>`<div class="rq"><b>@${esc(f.n)}</b><span class="acbtns">${btns}</span></div>`;
+  el.innerHTML=`<h3>Friends online <small>by username</small></h3>
+  <form class="cin" id="ofF" autocomplete="off"><input id="ofU" placeholder="Friend's username" maxlength="17" aria-label="Friend username"><button class="btn" type="submit">Send request</button></form>
+  <div class="hint" id="ofM">${esc(fr.msg)}</div>
+  ${fr.inc.length?`<h4 class="oh">Requests for you</h4>${fr.inc.map((f,i)=>reqRow(f,`<button class="btn sm" data-ac="${i}">Accept</button><button class="btn sm ghost" data-dc="${i}">Decline</button>`)).join('')}`:''}
+  ${fr.out.length?`<h4 class="oh">Sent</h4>${fr.out.map((f,i)=>reqRow(f,`<span class="hint" style="margin:0">Pending</span><button class="btn sm ghost" data-cn="${i}">Cancel</button>`)).join('')}`:''}
+  <h4 class="oh">Your friends</h4>
+  <div class="fgrid">${fr.list.length?fr.list.map((f,i)=>{const p=sn(f);return p?miniProfile(p,`<div class="facts"><button class="btn sm" data-fc="${i}">Challenge</button><button class="btn sm ghost" data-fr="${i}">Remove</button></div>`):`<div class="fcard"><div class="fname">@${esc(f.n)}</div><p class="hint">Their profile card appears after they next open the game.</p><div class="facts"><button class="btn sm ghost" data-fr="${i}">Remove</button></div></div>`}).join(''):'<p class="hint">No online friends yet. Send a request to a username above.</p>'}</div>`;
+  $('ofF').onsubmit=e=>{e.preventDefault();frSend($('ofU').value)};
+  const act=(attr,fn)=>el.querySelectorAll('['+attr+']').forEach(b=>b.onclick=async()=>{b.disabled=true;await fn(+b.getAttribute(attr));frFetch(true)});
+  act('data-ac',async i=>{await sb.from('friendships').update({status:'accepted'}).eq('id',fr.inc[i].id);fr.msg='Friend added.'});
+  act('data-dc',async i=>{await sb.from('friendships').delete().eq('id',fr.inc[i].id)});
+  act('data-cn',async i=>{await sb.from('friendships').delete().eq('id',fr.out[i].id)});
+  act('data-fr',async i=>{await sb.from('friendships').delete().eq('id',fr.list[i].id)});
+  el.querySelectorAll('[data-fc]').forEach(b=>b.onclick=()=>{const p=sn(fr.list[+b.dataset.fc]);if(p)startDuel(p)});
 }
 let pushT=null;onSaved=()=>{if(!cloud.user||cloud.pend)return;clearTimeout(pushT);pushT=setTimeout(cloudPush,2500)};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&cloud.user&&!cloud.pend){clearTimeout(pushT);cloudPush()}});
@@ -3186,7 +3263,7 @@ const CODES={
     return add.length?{ok:1,msg:'Unlocked '+add.length+' items. Every banner, ring, emblem and title is yours.',fxT:6}:{ok:0,msg:'You already own every item.'}},
   BI3GOAT:()=>{store.dimes+=1000000;save();chips();return{ok:1,msg:'+1,000,000 Dimes added to your balance.',fxT:6}},
   BI3ESOTERIC:()=>{store.esoArm=true;save();if(!$('shop').hidden)renderShop();return{ok:1,msg:'Armed. Your next Hall of Fame Case is guaranteed to contain an Esoteric item.',fxT:4}},
-  BI3RANKED:()=>{const topRP=Math.max(...botRP()),topW=Math.max(...lbBots().map(b=>b.w));store.rp=Math.max(store.rp||0,topRP+25);store.duel.w=Math.max(store.duel.w,topW+25);claimRanks();save();chips();if(!$('ranked').hidden)renderRanked();return{ok:1,msg:'You are #1 on both leaderboards by 25, at Legend rank, with every ranked reward unlocked.',fxT:6}},
+  BI3RANKED:()=>{const topRP=Math.max(...fieldRP()),topW=Math.max(...lbBots().map(b=>b.w));store.rp=Math.max(store.rp||0,topRP+25);store.duel.w=Math.max(store.duel.w,topW+25);claimRanks();save();chips();if(!$('ranked').hidden)renderRanked();return{ok:1,msg:'You are #1 on both leaderboards by 25, at Legend rank, with every ranked reward unlocked.',fxT:6}},
   BI3BINDER:()=>{const miss=ALL.filter(p=>!store.binder[p.k]);if(!miss.length)return{ok:0,msg:'Your Binder is already complete.'};miss.forEach(p=>{store.binder[p.k]={t:cardTier(p),n:1}});save();chips();const d=checkSets();if(!$('binder').hidden)binder();return{ok:1,msg:'Added '+miss.length+' players. Binder complete.'+(d.length?' '+d.length+' sets finished.':''),fxT:6}},
   FREEPLAY:()=>{if(store.pro)return{ok:0,msg:'Endless Run is already unlocked.'};store.pro=true;save();home();return{ok:1,msg:'Endless Run unlocked.',fxT:4}}
 };
@@ -3238,6 +3315,7 @@ function miniProfile(p,extra){
   return `<div class="fcard">${bnHTML(ban,'fban')}<div class="frow"><div>${avatar(p.eq,56)}</div><div style="min-width:0"><div class="fname">${esc(p.n)}</div><div class="ptitle" style="font-size:13px">${titleSpan(ti)}</div></div></div><div class="fplate">${plateHTML(ITEM[p.eq.plate]||ITEM.p0,p.sv)}</div>${extra||''}</div>`;
 }
 function renderFriends(){
+  renderOnline();frFetch();
   const code=myCode();
   $('fme').innerHTML=profileHTML(store.eq,store.name);
   $('fcode').textContent=code;$('fid').textContent='#'+idOf(code);
@@ -3261,8 +3339,9 @@ function addFriendByCode(){
 /* RANKED + LEADERBOARD (bots for now) */
 const LBN=['Hardwood Hank','Dime Dropper','Glass Cleaner','Corner Three','Paint Beast','Zone Breaker','Late Clock','Backdoor Bri','Rim Runner','Triple Threat','Sixth Sense','Fadeaway Finn','Hot Hand Harper','Clutch Cora','Deep Cut Dana','Pick and Roll Pete','Swish Sully','Euro Step Eli','Box Score Bo','Lockdown Lena','Fast Break Fay','Weak Side Wes','Garbage Time Gus','Film Room Fran','Buzzer Beau','Sky Hook Sam','Pivot Pia','Charge Taker','Dunk Contest Dev','Splash Sasha','Wing Walker','Screen Setter','Sneaker Sal','Net Ripper','Hoop Dreams Hal','Block Party Bea','Alley Oop Ozzy','Ankle Breaker','Rebound Rex','Bank Shot Bev'];
 const botRP=()=>LBN.map((n,i)=>i<25?4200-i*85:1850-(i-25)*70);
-const legendCut=()=>botRP()[24]+1;
-const rankOf=rp=>{let k=0;RANKS.forEach((r,i)=>{if(rp>=r.rp)k=i});if(k===7&&botRP().filter(x=>x>rp).length>=25)k=6;return k};
+let realList=[];const fieldRP=()=>botRP().concat(realList.map(r=>r.rp)).sort((a,b)=>b-a);
+const legendCut=()=>fieldRP()[24]+1;
+const rankOf=rp=>{let k=0;RANKS.forEach((r,i)=>{if(rp>=r.rp)k=i});if(k===7&&fieldRP().filter(x=>x>rp).length>=25)k=6;return k};
 const rankItem=i=>i>0?byName('emblem',RANKS[i].n+' Rank'):null;
 const rankItems=i=>{const r=RKREW[i];return i>0?[rankItem(i),byName('banner',r.banner),r.ring&&byName('ring',r.ring),byName('title',r.title)].filter(Boolean):[]};
 function claimRanks(){
@@ -3282,7 +3361,7 @@ function lbRow(b,pos,me){return `<li class="${me?'me':''}"><span class="lbp">${p
 function renderRanked(){
   claimRanks();const rp=store.rp||0,ri=rankOf(rp),R=RANKS[ri],rk=store.rk||{w:0,l:0},cut=legendCut();
   const crestFor=i=>i>0?ITEM[rankItem(i)]:EX('Rookie Rank',1,'steel','ball','ring','ring');
-  const bots=lbBots(),pos=botRP().filter(x=>x>rp).length+1;
+  const bots=lbBots(),pos=fieldRP().filter(x=>x>rp).length+1;
   let nextTxt,pct;
   if(ri===7){nextTxt=`You are #${pos} on the leaderboard. Stay in the top 25 to keep Legend.`;pct=100}
   else if(ri===6&&rp>=1900){nextTxt=`Top 25 only: pass ${cut.toLocaleString()} RP (${(cut-rp).toLocaleString()} to go)`;pct=Math.round((rp-1400)/(cut-1400)*100)}
@@ -3295,13 +3374,14 @@ function renderRanked(){
   $('lbtabs').innerHTML=`<button data-t="rp" aria-pressed="${lbTab==='rp'}">Ranked points</button><button data-t="w" aria-pressed="${lbTab==='w'}">1v1 wins</button>`;
   $('lbtabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{lbTab=b.dataset.t;renderRanked()});
   const key=lbTab==='rp'?'rp':'w',mine={n:store.name,rp,w:store.duel.w},mv=mine[key];
-  const N=25,all=bots.map(b=>Object.assign({},b)).concat([Object.assign({me:1},mine)]).sort((a,b)=>(b[key]-a[key])||(b.me?1:0)-(a.me?1:0));
+  const N=25,all=bots.concat(realList).map(b=>Object.assign({},b)).concat([Object.assign({me:1},mine)]).sort((a,b)=>(b[key]-a[key])||(b.me?1:0)-(a.me?1:0));
   const mpos=all.findIndex(x=>x.me)+1;
   let list=all.slice(0,N).map((b,i)=>lbRow(b,i+1,b.me));
   if(lbTab==='rp')list.push('<li class="cut">Top 25 are Legend. Everyone below is Master or lower.</li>');
   if(mpos>N)list.push('<li class="gap">…</li>',lbRow(mine,mpos,true));
   $('lbwins').innerHTML=list.join('');
-  $('lbnote').textContent=lbTab==='rp'?'Only the top 25 players by ranked points hold Legend rank.':'Total 1v1 wins, ranked and casual.';
+  $('lbnote').textContent=(lbTab==='rp'?'Only the top 25 players by ranked points hold Legend rank.':'Total 1v1 wins, ranked and casual.')+(sb?' Real players appear here as they sign up, mixed in with sample players.':'');
+  if(sb&&Date.now()-lbAt>15000){lbAt=Date.now();lbFetch().then(ch=>{if(ch&&!$('ranked').hidden)renderRanked()})}
 }
 /* DUEL (bots for now) */
 function vsStrip(p){const ban=ITEM[p.eq.banner],ti=ITEM[p.eq.title];
